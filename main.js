@@ -12,38 +12,45 @@ import { z } from "zod";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-async function summarizeTranscript() {
-  try {
-    console.log("Starting transcript summarization...");
+// Define output schema
+const outputSchema = z.object({
+  summary: z.string().describe("Brief overview capturing the essence of the entire video content."),
+  keyPoints: z.array(z.string()).describe("Consolidated list of main topics or concepts discussed."),
+  detailedNotes: z.array(z.string()).describe("Comprehensive and structured summary of the video content, including key arguments, examples, and explanations."),
+  importantQuotes: z.array(z.string()).describe("List of the most notable quotes or standout statements."),
+  actionsTakeaways: z.array(z.string()).describe("Compiled list of practical tips, steps, or lessons viewers can apply."),
+  glossary: z.array(z.string()).describe("Definitions of important specialized terms or concepts introduced."),
+  referencesAndResources: z.array(z.string()).describe("Any external resources or citations mentioned."),
+});
 
-    // Read the transcript file
-    const transcriptPath = path.join(__dirname, "transcripts", "my-first-million-0-to-1-million", "openai-whisper.txt");
-    const transcript = await fs.readFile(transcriptPath, "utf-8");
-    console.log("Transcript loaded.");
+// Load and split transcript
+async function loadAndSplitTranscript(transcriptPath) {
+  console.log("Loading and splitting transcript...");
+  const transcript = await fs.readFile(transcriptPath, "utf-8");
+  const textSplitter = new RecursiveCharacterTextSplitter({
+    chunkSize: 10000,
+    chunkOverlap: 200,
+  });
+  const docs = await textSplitter.splitDocuments([
+    new Document({ pageContent: transcript }),
+  ]);
+  console.log(`Transcript split into ${docs.length} chunks.`);
+  return docs;
+}
 
-    // Initialize the text splitter
-    const textSplitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 10000,
-      chunkOverlap: 200,
-    });
+// Initialize OpenAI model
+function initializeOpenAIModel() {
+  console.log("Initializing OpenAI model...");
+  return new ChatOpenAI({
+    temperature: 0.3,
+    modelName: "gpt-4o-mini-2024-07-18",
+    maxTokens: 4000,
+  });
+}
 
-    // Split the transcript
-    console.log("Splitting transcript into chunks...");
-    const docs = await textSplitter.splitDocuments([
-      new Document({ pageContent: transcript }),
-    ]);
-    console.log(`Transcript split into ${docs.length} chunks.`);
-
-    // Initialize the OpenAI model
-    console.log("Initializing OpenAI model...");
-    const model = new ChatOpenAI({
-      temperature: 0.3,
-      modelName: "gpt-4o-mini-2024-07-18",
-      maxTokens: 4000,
-    });
-
-    // Custom prompt for individual chunks
-    const mapPrompt = PromptTemplate.fromTemplate(`
+// Create summarization chain
+function createSummarizationChain(model) {
+  const mapPrompt = PromptTemplate.fromTemplate(`
 Analyze the following part of a video transcript and create a partial summary. Focus on the content of this specific part.
 
 # Summary Sections:
@@ -57,10 +64,9 @@ Analyze the following part of a video transcript and create a partial summary. F
 {text}
 
 Provide a concise summary focusing on the above sections:
-`);
+  `);
 
-    // Custom prompt for the final summary
-    const combinePrompt = PromptTemplate.fromTemplate(`
+  const combinePrompt = PromptTemplate.fromTemplate(`
 Create a comprehensive cheatsheet for the entire video content by synthesizing the following partial summaries. Organize the information logically and eliminate redundancies.
 
 {text}
@@ -75,55 +81,59 @@ Generate a final cheatsheet with these sections:
 - References and Resources: Any external resources or citations mentioned.
 
 Ensure the final cheatsheet is well-organized and covers the entire video content:
-`);
+  `);
 
-    const outputSchema = z.object({
-      summary: z.string().describe("Brief overview capturing the essence of the entire video content."),
-      keyPoints: z.array(z.string()).describe("Consolidated list of main topics or concepts discussed."),
-      detailedNotes: z.array(z.string()).describe("Comprehensive and structured summary of the video content, including key arguments, examples, and explanations. Use headings and bullet points."),
-      importantQuotes: z.array(z.string()).describe("List of the most notable quotes or standout statements."),
-      actionsTakeaways: z.array(z.string()).describe("Compiled list of practical tips, steps, or lessons viewers can apply."),
-      glossary: z.array(z.string()).describe("Definitions of important specialized terms or concepts introduced."),
-      referencesAndResources: z.array(z.string()).describe("Any external resources or citations mentioned."),
-    });
+  return loadSummarizationChain(model, {
+    type: "map_reduce",
+    mapPrompt: mapPrompt,
+    combinePrompt: combinePrompt,
+  });
+}
 
-    // Create the summarization chain
-    const chain = loadSummarizationChain(model, {
-      type: "map_reduce",
-      // verbose: true,
-      mapPrompt: mapPrompt,
-      combinePrompt: combinePrompt,
-    });
+// Generate structured output
+async function generateStructuredOutput(model, text) {
+  console.log("Generating structured output...");
+  const structuredLLM = model.withStructuredOutput(outputSchema, {
+    strict: true,
+  });
+  const structuredOutputPrompt = PromptTemplate.fromTemplate(`
+Generate a JSON output based on the following text:
+{text}
+  `);
+  return await structuredLLM.invoke(
+    await structuredOutputPrompt.formatPromptValue({ text })
+  );
+}
 
-    // Run the summarization chain
+// Save output
+async function saveOutput(structuredOutput, textOutput) {
+  console.log("Saving the summary as JSON and text...");
+  const jsonOutputPath = path.join(__dirname, "output", "summary.json");
+  await fs.writeFile(jsonOutputPath, JSON.stringify(structuredOutput, null, 2));
+  console.log(`JSON summary saved to ${jsonOutputPath}`);
+
+  const textOutputPath = path.join(__dirname, "output", "summary.md");
+  await fs.writeFile(textOutputPath, textOutput);
+  console.log(`Text summary saved to ${textOutputPath}`);
+}
+
+// Main function
+async function summarizeTranscript() {
+  try {
+    console.log("Starting transcript summarization...");
+
+    const transcriptPath = path.join(__dirname, "transcripts", "my-first-million-0-to-1-million", "openai-whisper.txt");
+    const docs = await loadAndSplitTranscript(transcriptPath);
+    const model = initializeOpenAIModel();
+    const chain = createSummarizationChain(model);
+
     console.log("Generating summary...");
-    const result = await chain.invoke({
-      input_documents: docs,
-    });
+    const result = await chain.invoke({ input_documents: docs });
 
-    // Call again the model with structured output -> TODO: find a way to do that without calling it again
-    console.log("Generating structured output...");
-    const structuredLLM = model.withStructuredOutput(outputSchema, {
-      strict: true,
-    });
-    const structuredOutputPrompt = PromptTemplate.fromTemplate(`
-      Generate a JSON output based on the following text:
-      {text}
-    `);
-    const structuredOutput = await structuredLLM.invoke(
-      await structuredOutputPrompt.formatPromptValue({ text: result.text })
-    );
+    const structuredOutput = await generateStructuredOutput(model, result.text);
     console.log(structuredOutput);
 
-    // Save the result as JSON and text
-    console.log("Saving the summary as JSON and text...");
-    const jsonOutputPath = path.join(__dirname, "output", "summary.json");
-    await fs.writeFile(jsonOutputPath, JSON.stringify(structuredOutput, null, 2));
-    console.log(`JSON summary saved to ${jsonOutputPath}`);
-
-    const textOutputPath = path.join(__dirname, "output", "summary.md");
-    await fs.writeFile(textOutputPath, result.text);
-    console.log(`Text summary saved to ${textOutputPath}`);
+    await saveOutput(structuredOutput, result.text);
 
     console.log("Transcript summarization completed successfully.");
   } catch (error) {
