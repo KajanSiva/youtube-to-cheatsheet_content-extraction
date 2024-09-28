@@ -1,0 +1,49 @@
+{
+  "themes": [
+    {
+      "title": "Entrepreneurial Journey and Successes",
+      "description": "Thibaut Elzière's background in launching successful ventures, including Fotolia and eFounders, highlights the evolution of his entrepreneurial experiences and the entrepreneurial ecosystem.",
+      "subThemes": []
+    },
+    {
+      "title": "Startup Studio Model",
+      "description": "The structure and operational model of eFounders as a startup studio emphasizes innovation, majority ownership for founders, and a scalable approach to launching startups.",
+      "subThemes": []
+    },
+    {
+      "title": "Funding and Equity Dynamics",
+      "description": "The evolution of equity models in startup funding shows a shift from 20% to 30% equity stakes for founders, alongside challenges in securing funding and the importance of financial independence for startups.",
+      "subThemes": []
+    },
+    {
+      "title": "Role of Technical Leadership",
+      "description": "Having a CTO as a co-founder is critical for successful software projects, with challenges in recruiting technical leaders and the necessity of technical involvement from the outset.",
+      "subThemes": []
+    },
+    {
+      "title": "Market Validation and Iterative Development",
+      "description": "Validating startup ideas through market feedback is significant, introducing the concept of a 'minimum viable salary' to support founders during early stages.",
+      "subThemes": []
+    },
+    {
+      "title": "Challenges and Risks in Entrepreneurship",
+      "description": "Acknowledging the inherent risks and high failure rates in startups emphasizes the necessity of resilience and adaptability in navigating the startup landscape.",
+      "subThemes": []
+    },
+    {
+      "title": "Community and Collaboration",
+      "description": "Fostering a supportive community among startups and promoting collaboration is important, with efforts to create a network of alumni and encourage shared growth within the entrepreneurial ecosystem.",
+      "subThemes": []
+    },
+    {
+      "title": "Personal Reflections and Frustrations",
+      "description": "The emotional complexities of sharing a vision with co-founders and the evolution of projects over time lead to mixed feelings about contributions to startups and the recognition of those contributions by founders.",
+      "subThemes": []
+    },
+    {
+      "title": "Current and Future Projects",
+      "description": "Ongoing projects in various sectors, including AI and luxury vacation rentals, reflect intentions to innovate in AI distribution and explore new business opportunities.",
+      "subThemes": []
+    }
+  ]
+}

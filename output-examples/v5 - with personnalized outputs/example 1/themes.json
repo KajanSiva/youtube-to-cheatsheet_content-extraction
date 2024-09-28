@@ -1,0 +1,76 @@
+{
+  "themes": [
+    {
+      "title": "Entrepreneurial Journey and Evolution",
+      "description": "Thibaut Elzière's transition from founding Photolia to becoming a successful business angel and startup studio founder highlights the importance of luck and timing in entrepreneurial success.",
+      "subThemes": [
+        "Transition from Photolia",
+        "Role of luck in success",
+        "Timing in entrepreneurship"
+      ]
+    },
+    {
+      "title": "Startup Studio Model at eFounders",
+      "description": "The structure and operational model of eFounders focuses on equity stakes and incubation processes, emphasizing innovation and empowering entrepreneurs through majority ownership.",
+      "subThemes": [
+        "Equity stakes",
+        "Incubation processes",
+        "Empowering entrepreneurs"
+      ]
+    },
+    {
+      "title": "Challenges and Risks in Startups",
+      "description": "Startups face inherent risks of failure and the expectation of not succeeding, alongside the necessity of securing funding in a challenging landscape.",
+      "subThemes": [
+        "Risks of startup failure",
+        "Funding challenges",
+        "Expectation of failure"
+      ]
+    },
+    {
+      "title": "Importance of Technical Expertise",
+      "description": "The critical role of a CTO or technical co-founder is essential for startup success, with challenges in recruiting technical talent and the importance of early involvement.",
+      "subThemes": [
+        "Role of CTO",
+        "Recruiting technical talent",
+        "Early involvement of technical expertise"
+      ]
+    },
+    {
+      "title": "Product Development and Market Validation",
+      "description": "Developing a minimum viable product (MVP) and validating ideas through market feedback is significant, along with the concept of a 'minimum viable salary' to support founders.",
+      "subThemes": [
+        "Minimum viable product (MVP)",
+        "Market validation",
+        "Minimum viable salary"
+      ]
+    },
+    {
+      "title": "Collaborative Entrepreneurship and Vision",
+      "description": "The evolution of entrepreneurial vision within collaborative projects faces challenges of divergent interpretations, necessitating adaptability and community support for startups.",
+      "subThemes": [
+        "Collaborative projects",
+        "Divergent interpretations",
+        "Community support"
+      ]
+    },
+    {
+      "title": "Current Projects and Future Aspirations",
+      "description": "Thibaut's ongoing projects include a micro-electric vehicle and luxury vacation rentals, with an exploration of new sectors like AI and local AI solutions for businesses.",
+      "subThemes": [
+        "Micro-electric vehicle",
+        "Luxury vacation rentals",
+        "AI solutions"
+      ]
+    },
+    {
+      "title": "Investment Strategies and Wealth Management",
+      "description": "Insights on personal financing and investment strategies, including investments in Berkshire Hathaway and balancing creative involvement with stepping back as startups evolve.",
+      "subThemes": [
+        "Personal financing",
+        "Investment strategies",
+        "Balancing involvement"
+      ]
+    }
+  ]
+}

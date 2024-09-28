@@ -32,6 +32,17 @@ const themeSchema = z.object({
   })),
 });
 
+// Define predefined sections with descriptions
+const predefinedSections = {
+  summary: "Brief overview capturing the essence of the entire video content.",
+  key_points: "Consolidated list of main topics or concepts discussed.",
+  detailed_notes: "Comprehensive and structured summary of the video content, including key arguments, examples, and explanations.",
+  important_quotes: "List of the most notable quotes or standout statements.",
+  actions_takeaways: "Compiled list of practical tips, steps, or lessons viewers can apply.",
+  glossary: "Definitions of important specialized terms or concepts introduced.",
+  references_and_resources: "Any external resources or citations mentioned."
+};
+
 // Part 1: Transcript Processing
 async function processTranscript(transcriptPath) {
   console.log("Starting transcript processing...");
@@ -114,19 +125,27 @@ Ensure that every theme has all three fields, even if subThemes is an empty arra
 }
 
 // Part 3: Summary Generation
-async function generateSummary(docs) {
+async function generateSummary(docs, language = 'English', focusedThemes = [], selectedSections = []) {
   console.log("Starting summary generation...");
 
   const model = initializeOpenAIModel();
-  const chain = createSummarizationChain(model);
+  const chain = createSummarizationChain(model, language, focusedThemes, selectedSections);
 
   console.log("Generating summary...");
   const result = await chain.invoke({ input_documents: docs });
 
-  const structuredOutput = await generateStructuredOutput(model, result.text);
+  const structuredOutput = await generateStructuredOutput(model, result.text, language, selectedSections);
   console.log(structuredOutput);
 
-  await saveOutput(structuredOutput, result.text);
+  // Create personalization parameters object
+  const personalizationParams = {
+    language,
+    focusedThemes,
+    selectedSections
+  };
+
+  // Save outputs including personalization parameters
+  await saveOutput(structuredOutput, result.text, personalizationParams);
 
   console.log("Summary generation completed successfully.");
   return { structuredOutput, textOutput: result.text };
@@ -143,38 +162,44 @@ function initializeOpenAIModel() {
 }
 
 // Create summarization chain
-function createSummarizationChain(model) {
+function createSummarizationChain(model, language, focusedThemes, selectedSections) {
+  const sectionDescriptions = selectedSections.map(section => 
+    `- ${section}: ${predefinedSections[section]}`
+  ).join('\n');
+
   const mapPrompt = PromptTemplate.fromTemplate(`
 Analyze the following part of a video transcript and create a partial summary. Focus on the content of this specific part.
+Generate the summary in ${language}.
+
+# Focus Themes:
+${focusedThemes.length > 0 ? focusedThemes.join(', ') : 'All themes'}
 
 # Summary Sections:
-- Key Points: List the main topics or concepts discussed in this part as bullet points.
-- Detailed Notes: Provide a structured summary of this part's content. Include key arguments, examples, and explanations.
-- Quotes: Extract any notable quotes or important statements from this part.
-- Actions/Takeaways: List any practical tips or lessons mentioned in this part.
-- Terms: Define any specialized terms or concepts introduced in this part.
+${sectionDescriptions}
 
 # Transcript Part:
 {text}
 
-Provide a concise summary focusing on the above sections:
+Provide a concise summary focusing on the specified themes and sections:
   `);
 
   const combinePrompt = PromptTemplate.fromTemplate(`
-Create a comprehensive cheatsheet for the entire video content by synthesizing the following partial summaries. Organize the information logically and eliminate redundancies.
+Create a comprehensive cheatsheet for the entire video content by synthesizing the following partial summaries. 
+Organize the information logically and eliminate redundancies.
+Generate the cheatsheet in ${language}.
+
+# Focus Themes:
+${focusedThemes.length > 0 ? focusedThemes.join(', ') : 'All themes'}
+
+# Summary Sections:
+${sectionDescriptions}
 
 {text}
 
-Generate a final cheatsheet with these sections:
-- Summary: Brief overview capturing the essence of the entire video content.
-- Key Points/Main Ideas: Consolidated list of main topics or concepts discussed.
-- Detailed Notes: Comprehensive and structured summary of the video content, including key arguments, examples, and explanations. Use headings and bullet points.
-- Important Quotes: List of the most notable quotes or standout statements.
-- Actions/Takeaways: Compiled list of practical tips, steps, or lessons viewers can apply.
-- Glossary: Definitions of important specialized terms or concepts introduced.
-- References and Resources: Any external resources or citations mentioned.
+Generate a final cheatsheet with these sections, ensuring each section adheres to its description:
+${selectedSections.join(', ')}
 
-Ensure the final cheatsheet is well-organized and covers the entire video content:
+Ensure the final cheatsheet is well-organized, covers the entire video content, and focuses on the specified themes:
   `);
 
   return loadSummarizationChain(model, {
@@ -185,14 +210,31 @@ Ensure the final cheatsheet is well-organized and covers the entire video conten
 }
 
 // Generate structured output
-async function generateStructuredOutput(model, text) {
+async function generateStructuredOutput(model, text, language, selectedSections) {
   console.log("Generating structured output...");
-  const structuredLLM = model.withStructuredOutput(outputSchema, {
+  
+  // Create a new schema based on selected sections
+  const dynamicSchema = z.object(
+    Object.fromEntries(
+      selectedSections.map(section => {
+        return [section, section === 'summary' ? z.string() : z.array(z.string())];
+      })
+    )
+  );
+
+  const sectionDescriptions = selectedSections.map(section => 
+    `- ${section}: ${predefinedSections[section]}`
+  ).join('\n');
+
+  const structuredLLM = model.withStructuredOutput(dynamicSchema, {
     strict: true,
   });
   const structuredOutputPrompt = PromptTemplate.fromTemplate(`
-Generate a JSON output based on the following text:
+Generate a JSON output based on the following text in ${language}:
 {text}
+
+Include only the following sections, adhering to their descriptions:
+${sectionDescriptions}
   `);
   return await structuredLLM.invoke(
     await structuredOutputPrompt.formatPromptValue({ text })
@@ -200,15 +242,28 @@ Generate a JSON output based on the following text:
 }
 
 // Save output
-async function saveOutput(structuredOutput, textOutput) {
-  console.log("Saving the summary as JSON and text...");
-  const jsonOutputPath = path.join(__dirname, "output", "summary.json");
+async function saveOutput(structuredOutput, textOutput, personalizationParams) {
+  console.log("Saving the summary and personalization parameters...");
+  
+  const outputDir = path.join(__dirname, "output");
+  
+  // Ensure the output directory exists
+  await fs.mkdir(outputDir, { recursive: true });
+
+  // Save JSON summary
+  const jsonOutputPath = path.join(outputDir, "summary.json");
   await fs.writeFile(jsonOutputPath, JSON.stringify(structuredOutput, null, 2));
   console.log(`JSON summary saved to ${jsonOutputPath}`);
 
-  const textOutputPath = path.join(__dirname, "output", "summary.md");
+  // Save text summary
+  const textOutputPath = path.join(outputDir, "summary.md");
   await fs.writeFile(textOutputPath, textOutput);
   console.log(`Text summary saved to ${textOutputPath}`);
+
+  // Save personalization parameters
+  const paramsOutputPath = path.join(outputDir, "personalization_params.json");
+  await fs.writeFile(paramsOutputPath, JSON.stringify(personalizationParams, null, 2));
+  console.log(`Personalization parameters saved to ${paramsOutputPath}`);
 }
 
 // New function to save themes output
@@ -223,19 +278,35 @@ async function saveThemesOutput(textThemes, structuredThemes) {
   console.log(`JSON themes saved to ${themesJsonOutputPath}`);
 }
 
+// Add this function to randomly select elements from an array
+function randomSample(array, n) {
+  const shuffled = array.slice().sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, n);
+}
+
 // Main function
 async function summarizeTranscript() {
   try {
     const transcriptPath = path.join(__dirname, "transcripts", "flomodia-thibaud-elziere", "openai-whisper.txt");
     
+    // Hardcoded personalization parameters (to be replaced with user inputs later)
+    const language = 'English';
+    const numberOfThemesToFocus = 2; // You can adjust this number as needed
+    const selectedSections = ['summary', 'key_points', 'detailed_notes', 'actions_takeaways'];
+
     // Part 1: Process the transcript
     const docs = await processTranscript(transcriptPath);
     
     // Part 2: Identify themes
     const { textThemes, structuredThemes } = await identifyThemes(docs);
     
-    // Part 3: Generate the summary
-    const { structuredOutput, textOutput } = await generateSummary(docs);
+    // Randomly select focused themes from the detected themes
+    const allThemes = structuredThemes.themes.map(theme => theme.title);
+    const focusedThemes = randomSample(allThemes, Math.min(numberOfThemesToFocus, allThemes.length));
+    console.log("Randomly selected focused themes:", focusedThemes);
+    
+    // Part 3: Generate the summary with personalization
+    const { structuredOutput, textOutput } = await generateSummary(docs, language, focusedThemes, selectedSections);
 
     console.log("Transcript summarization completed successfully.");
   } catch (error) {
