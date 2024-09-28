@@ -7,6 +7,7 @@ import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from 'url';
 import 'dotenv/config';
+import { z } from "zod";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,7 +17,7 @@ async function summarizeTranscript() {
     console.log("Starting transcript summarization...");
 
     // Read the transcript file
-    const transcriptPath = path.join(__dirname, "transcripts", "my-first-million-how-to-master-storytelling", "openai-whisper.txt");
+    const transcriptPath = path.join(__dirname, "transcripts", "my-first-million-0-to-1-million", "openai-whisper.txt");
     const transcript = await fs.readFile(transcriptPath, "utf-8");
     console.log("Transcript loaded.");
 
@@ -76,6 +77,16 @@ Generate a final cheatsheet with these sections:
 Ensure the final cheatsheet is well-organized and covers the entire video content:
 `);
 
+    const outputSchema = z.object({
+      summary: z.string().describe("Brief overview capturing the essence of the entire video content."),
+      keyPoints: z.array(z.string()).describe("Consolidated list of main topics or concepts discussed."),
+      detailedNotes: z.array(z.string()).describe("Comprehensive and structured summary of the video content, including key arguments, examples, and explanations. Use headings and bullet points."),
+      importantQuotes: z.array(z.string()).describe("List of the most notable quotes or standout statements."),
+      actionsTakeaways: z.array(z.string()).describe("Compiled list of practical tips, steps, or lessons viewers can apply."),
+      glossary: z.array(z.string()).describe("Definitions of important specialized terms or concepts introduced."),
+      referencesAndResources: z.array(z.string()).describe("Any external resources or citations mentioned."),
+    });
+
     // Create the summarization chain
     const chain = loadSummarizationChain(model, {
       type: "map_reduce",
@@ -86,15 +97,33 @@ Ensure the final cheatsheet is well-organized and covers the entire video conten
 
     // Run the summarization chain
     console.log("Generating summary...");
-    const result = await chain.call({
+    const result = await chain.invoke({
       input_documents: docs,
     });
 
-    // Save the result
-    console.log("Saving the summary...");
-    const outputPath = path.join(__dirname, "output", "summary.md");
-    await fs.writeFile(outputPath, result.text);
-    console.log(`Summary saved to ${outputPath}`);
+    // Call again the model with structured output -> TODO: find a way to do that without calling it again
+    console.log("Generating structured output...");
+    const structuredLLM = model.withStructuredOutput(outputSchema, {
+      strict: true,
+    });
+    const structuredOutputPrompt = PromptTemplate.fromTemplate(`
+      Generate a JSON output based on the following text:
+      {text}
+    `);
+    const structuredOutput = await structuredLLM.invoke(
+      await structuredOutputPrompt.formatPromptValue({ text: result.text })
+    );
+    console.log(structuredOutput);
+
+    // Save the result as JSON and text
+    console.log("Saving the summary as JSON and text...");
+    const jsonOutputPath = path.join(__dirname, "output", "summary.json");
+    await fs.writeFile(jsonOutputPath, JSON.stringify(structuredOutput, null, 2));
+    console.log(`JSON summary saved to ${jsonOutputPath}`);
+
+    const textOutputPath = path.join(__dirname, "output", "summary.md");
+    await fs.writeFile(textOutputPath, result.text);
+    console.log(`Text summary saved to ${textOutputPath}`);
 
     console.log("Transcript summarization completed successfully.");
   } catch (error) {
