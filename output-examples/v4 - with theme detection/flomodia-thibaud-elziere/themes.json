@@ -1,0 +1,86 @@
+{
+  "themes": [
+    {
+      "title": "Entrepreneurial Journey",
+      "description": "This theme covers the founding of Photolia, its acquisition by Adobe, the co-founding of eFounders, and the experience as a business angel investing in various companies.",
+      "subThemes": [
+        "Founding of Photolia",
+        "Acquisition by Adobe",
+        "Co-founding of eFounders",
+        "Business angel investments"
+      ]
+    },
+    {
+      "title": "Startup Studio Model (eFounders)",
+      "description": "An overview of eFounders' approach to launching startups, highlighting the transition from high equity stakes to a more balanced model for founders and the emphasis on collaboration and structured support.",
+      "subThemes": [
+        "Overview of the studio's approach",
+        "Transition to balanced equity model",
+        "Collaboration with entrepreneurs"
+      ]
+    },
+    {
+      "title": "Challenges in Startups",
+      "description": "This theme discusses the common expectation of failure in the startup landscape, difficulties in fundraising, and the importance of resilience and adaptability in the current economic climate.",
+      "subThemes": [
+        "Expectation of failure",
+        "Fundraising challenges",
+        "Resilience and adaptability"
+      ]
+    },
+    {
+      "title": "Role of Technical Leadership",
+      "description": "The significance of having a CTO as a co-founder from the start is emphasized, along with the need for technical expertise to ensure product integrity and efficient development.",
+      "subThemes": [
+        "Importance of CTO",
+        "Technical expertise",
+        "Product integrity"
+      ]
+    },
+    {
+      "title": "Funding and Financial Management",
+      "description": "This theme covers the initial reliance on personal investments, challenges in securing external funding, and discussions around compensation and reinvestment of profits into new ventures.",
+      "subThemes": [
+        "Personal investments",
+        "Securing external funding",
+        "Compensation and reinvestment"
+      ]
+    },
+    {
+      "title": "Validation and Market Feedback",
+      "description": "The importance of validating business ideas through market feedback is highlighted, along with advocacy for a 'minimum viable salary' to support entrepreneurs during early phases.",
+      "subThemes": [
+        "Validating business ideas",
+        "Market feedback",
+        "Minimum viable salary"
+      ]
+    },
+    {
+      "title": "Community Building Among Founders",
+      "description": "Efforts to create a supportive community for entrepreneurs at eFounders are discussed, along with comparisons to Y Combinator and exploration of new project areas like AI and health.",
+      "subThemes": [
+        "Supportive community",
+        "Comparison to Y Combinator",
+        "Exploration of AI and health"
+      ]
+    },
+    {
+      "title": "Evolution of Entrepreneurial Vision",
+      "description": "This theme reflects on the frustration with shifts in project direction, using the metaphor of parenting, and emphasizes adaptability and the ability to reshape narratives in entrepreneurship.",
+      "subThemes": [
+        "Shifts in project direction",
+        "Metaphor of parenting",
+        "Adaptability in entrepreneurship"
+      ]
+    },
+    {
+      "title": "Innovation and Future Projects",
+      "description": "Focus on developing innovative distribution models for AI and exploring new projects and sectors, including health and technology.",
+      "subThemes": [
+        "Innovative distribution models",
+        "New projects",
+        "Health and technology sectors"
+      ]
+    }
+  ]
+}

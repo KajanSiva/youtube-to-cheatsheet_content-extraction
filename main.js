@@ -23,8 +23,19 @@ const outputSchema = z.object({
   referencesAndResources: z.array(z.string()).describe("Any external resources or citations mentioned."),
 });
 
-// Load and split transcript
-async function loadAndSplitTranscript(transcriptPath) {
+// Define theme schema
+const themeSchema = z.object({
+  themes: z.array(z.object({
+    title: z.string().describe("A short title summarizing the theme."),
+    description: z.string().describe("A brief summary explaining what is said about this theme."),
+    subThemes: z.array(z.string()).describe("List of sub-topics related to the main theme. Can be an empty array if there are no sub-themes."),
+  })),
+});
+
+// Part 1: Transcript Processing
+async function processTranscript(transcriptPath) {
+  console.log("Starting transcript processing...");
+  
   console.log("Loading and splitting transcript...");
   const transcript = await fs.readFile(transcriptPath, "utf-8");
   const textSplitter = new RecursiveCharacterTextSplitter({
@@ -35,7 +46,90 @@ async function loadAndSplitTranscript(transcriptPath) {
     new Document({ pageContent: transcript }),
   ]);
   console.log(`Transcript split into ${docs.length} chunks.`);
+  
   return docs;
+}
+
+// New Part 2: Theme Identification
+async function identifyThemes(docs) {
+  console.log("Starting theme identification...");
+
+  const model = initializeOpenAIModel();
+  const themeChain = loadSummarizationChain(model, {
+    type: "map_reduce",
+    mapPrompt: PromptTemplate.fromTemplate(`
+Analyze the following part of a video transcript and identify the themes or topics discussed. For each theme, provide:
+
+- **Theme Title**: A short title summarizing the theme.
+- **Description**: A brief summary explaining what is said about this theme.
+- **Sub-themes** (if applicable): List of sub-topics related to the main theme.
+
+Transcript part:
+{text}
+
+Identify the themes in this part:
+    `),
+    combinePrompt: PromptTemplate.fromTemplate(`
+Combine and consolidate the following theme identifications from different parts of the transcript. Eliminate redundancies and organize the themes logically.
+
+{text}
+
+Provide a final list of main themes for the entire transcript:
+    `),
+  });
+
+  console.log("Identifying themes...");
+  const result = await themeChain.invoke({ input_documents: docs });
+
+  console.log("Generating structured theme output...");
+  const structuredThemes = await generateStructuredThemes(model, result.text);
+
+  // Call the new function to save themes output
+  await saveThemesOutput(result.text, structuredThemes);
+
+  console.log("Themes identified and saved successfully.");
+  return { textThemes: result.text, structuredThemes };
+}
+
+// Generate structured theme output
+async function generateStructuredThemes(model, text) {
+  const structuredLLM = model.withStructuredOutput(themeSchema, {
+    strict: true,
+  });
+  const structuredThemePrompt = PromptTemplate.fromTemplate(`
+Generate a JSON output based on the following identified themes:
+
+{text}
+
+Create a structured output with an array of themes, each containing:
+1. title: A short title summarizing the theme.
+2. description: A brief summary explaining what is said about this theme.
+3. subThemes: An array of sub-topics related to the main theme. If there are no sub-themes, provide an empty array.
+
+Ensure that every theme has all three fields, even if subThemes is an empty array.
+  `);
+  return await structuredLLM.invoke(
+    await structuredThemePrompt.formatPromptValue({ text })
+  );
+}
+
+// Part 3: Summary Generation
+async function generateSummary(docs) {
+  console.log("Starting summary generation...");
+
+  const model = initializeOpenAIModel();
+  const chain = createSummarizationChain(model);
+
+  console.log("Generating summary...");
+  const result = await chain.invoke({ input_documents: docs });
+
+  const structuredOutput = await generateStructuredOutput(model, result.text);
+  console.log(structuredOutput);
+
+  await saveOutput(structuredOutput, result.text);
+
+  console.log("Summary generation completed successfully.");
+  return { structuredOutput, textOutput: result.text };
 }
 
 // Initialize OpenAI model
@@ -117,23 +211,31 @@ async function saveOutput(structuredOutput, textOutput) {
   console.log(`Text summary saved to ${textOutputPath}`);
 }
 
+// New function to save themes output
+async function saveThemesOutput(textThemes, structuredThemes) {
+  console.log("Saving themes output...");
+  const themesTextOutputPath = path.join(__dirname, "output", "themes.md");
+  await fs.writeFile(themesTextOutputPath, textThemes);
+  console.log(`Text themes saved to ${themesTextOutputPath}`);
+
+  const themesJsonOutputPath = path.join(__dirname, "output", "themes.json");
+  await fs.writeFile(themesJsonOutputPath, JSON.stringify(structuredThemes, null, 2));
+  console.log(`JSON themes saved to ${themesJsonOutputPath}`);
+}
+
 // Main function
 async function summarizeTranscript() {
   try {
-    console.log("Starting transcript summarization...");
-
-    const transcriptPath = path.join(__dirname, "transcripts", "my-first-million-0-to-1-million", "openai-whisper.txt");
-    const docs = await loadAndSplitTranscript(transcriptPath);
-    const model = initializeOpenAIModel();
-    const chain = createSummarizationChain(model);
-
-    console.log("Generating summary...");
-    const result = await chain.invoke({ input_documents: docs });
-
-    const structuredOutput = await generateStructuredOutput(model, result.text);
-    console.log(structuredOutput);
-
-    await saveOutput(structuredOutput, result.text);
+    const transcriptPath = path.join(__dirname, "transcripts", "flomodia-thibaud-elziere", "openai-whisper.txt");
+    
+    // Part 1: Process the transcript
+    const docs = await processTranscript(transcriptPath);
+    
+    // Part 2: Identify themes
+    const { textThemes, structuredThemes } = await identifyThemes(docs);
+    
+    // Part 3: Generate the summary
+    const { structuredOutput, textOutput } = await generateSummary(docs);
 
     console.log("Transcript summarization completed successfully.");
   } catch (error) {
