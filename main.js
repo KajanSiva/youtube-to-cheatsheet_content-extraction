@@ -37,7 +37,7 @@ async function summarizeTranscript() {
     console.log("Initializing OpenAI model...");
     const model = new ChatOpenAI({
       temperature: 0.3,
-      modelName: "gpt-4o-2024-08-06",
+      modelName: "gpt-4o-mini-2024-07-18",
       maxTokens: 4000,
     });
 
